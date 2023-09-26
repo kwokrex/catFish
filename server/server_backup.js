@@ -1,5 +1,5 @@
 const WebSocket = require('ws');
-const wss = new WebSocket.Server({ host: '0.0.0.0', port: 8080 });
+const wss = new WebSocket.Server({ host: '0.0.0.0', port: 8081 });
 
 let fishState = { x: 0, y: 0, visible: true };
 console.log("handling...")

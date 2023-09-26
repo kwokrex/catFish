@@ -30,12 +30,14 @@ class MainActivity : AppCompatActivity() {
             .build()
 
         val request = Request.Builder()
-            .url("ws://192.168.1.2:8080") // Replace with your WebSocket server URL
+            .url("wss://192.168.1.2:8081") // Replace with your WebSocket server URL
             .build()
+
 
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 super.onOpen(webSocket, response)
+                Log.d("WebSocket", "WebSocket connection opened.")
 
                 // Send screen dimensions to the server when the WebSocket connection is established
                 val rootView = findViewById<ViewGroup>(android.R.id.content)
@@ -50,6 +52,7 @@ class MainActivity : AppCompatActivity() {
 
             override fun onMessage(webSocket: WebSocket, text: String) {
                 super.onMessage(webSocket, text)
+                Log.d("WebSocket", "Received message: $text")
 
                 // Handle incoming messages from the server (e.g., fish state updates)
                 // Update the fish position on the screen based on the received data
@@ -68,6 +71,8 @@ class MainActivity : AppCompatActivity() {
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 super.onFailure(webSocket, t, response)
                 // Handle WebSocket connection failure
+                Log.e("WebSocket", "WebSocket connection failure: ${t.message}")
+
             }
         })
 
@@ -91,10 +96,11 @@ class MainActivity : AppCompatActivity() {
                     // You can add your logic here
 
                     // Example: Sending a message indicating a touch event
-                    println("touched")
+
                     val touchEvent = JSONObject()
                     touchEvent.put("touchEvent", true)
                     webSocket.send(touchEvent.toString())
+                    println("touched sent")
                 }
             }
             else -> return super.onTouchEvent(event)
