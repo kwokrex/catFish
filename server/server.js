@@ -21,24 +21,18 @@ wss.on('connection', (ws) => {
     const data = JSON.parse(message);
     console.log("message incoming......");
 
-    // Check if the message contains screen dimensions
-    if (data.screenWidth && data.screenHeight) {
-      // Update fishState with the provided screen dimensions
-      fishState.screenWidth = data.screenWidth;
-      fishState.screenHeight = data.screenHeight;
-      console.log(fishState.screenWidth);
-
-      // Generate a random position within the provided dimensions
-      fishState.x = Math.floor(Math.random() * data.screenWidth);
-      fishState.y = Math.floor(Math.random() * data.screenHeight);
 
       // Broadcast the updated fishState to all clients
       wss.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
           client.send(JSON.stringify(fishState));
+          console.log("sent new fish to client");
+
         }
       });
-    }
+    
+
+
   });
 
   // Send the initial fishState to the newly connected client

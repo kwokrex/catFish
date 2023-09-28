@@ -5,7 +5,10 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.MotionEvent
+import android.view.View
 import android.view.ViewGroup
+import android.view.animation.Animation
+import android.view.animation.AnimationUtils
 import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
 import kotlinx.serialization.Serializable
@@ -22,6 +25,9 @@ data class FishState(val x: Int, val y: Int, val visible: Boolean)
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webSocket: WebSocket // Declare the WebSocket variable
+    private lateinit var fadeOutAnimation: Animation
+    private lateinit var fishImageView: ImageView // Reference to the fish ImageView
+
     private var lastTouchX = 0f
     private var lastTouchY = 0f
     // Handler to schedule periodic updates
@@ -33,6 +39,9 @@ class MainActivity : AppCompatActivity() {
         val hostnameVerifier = HostnameVerifier { hostname, session ->
             true
         }
+        // Initialize the fade-out animation
+        fadeOutAnimation = AnimationUtils.loadAnimation(this, R.anim.fade_out)
+
         val client = OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(3, TimeUnit.SECONDS)
@@ -48,22 +57,12 @@ class MainActivity : AppCompatActivity() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 super.onOpen(webSocket, response)
                 Log.d("WebSocket", "WebSocket connection opened.")
-
-                // Send screen dimensions to the server when the WebSocket connection is established
-                val rootView = findViewById<ViewGroup>(android.R.id.content)
-                val screenWidth = rootView.width
-                val screenHeight = rootView.height
-                val screenDimensions = JSONObject()
-                screenDimensions.put("screenWidth", screenWidth)
-                screenDimensions.put("screenHeight", screenHeight)
-
-                //webSocket.send(screenDimensions.toString())
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
                 super.onMessage(webSocket, text)
                 Log.d("WebSocket", "Received message: $text")
-
+                startFishSwimming()
                 // Handle incoming messages from the server (e.g., fish state updates)
                 // Update the fish position on the screen based on the received data
                 runOnUiThread {
@@ -73,6 +72,7 @@ class MainActivity : AppCompatActivity() {
 
                     // Update the fish image view's position using findViewById
                     val fishImageView = findViewById<ImageView>(R.id.fishImageView)
+                    fishImageView.visibility = View.VISIBLE
                     fishImageView.x = x.toFloat()
                     fishImageView.y = y.toFloat()
                 }
@@ -85,9 +85,35 @@ class MainActivity : AppCompatActivity() {
 
             }
         })
+
         // Schedule periodic updates every 0.1 second
         handler.postDelayed(updateFishLocationRunnable, 100)
         client.dispatcher.executorService.shutdown()
+        // Find the fish ImageView
+        val fishImageView = findViewById<ImageView>(R.id.fishImageView)
+
+        // Set a click listener on the fish ImageView
+        fishImageView.setOnClickListener {
+            // Apply the fade-out animation when the fish is clicked
+            fishImageView.startAnimation(fadeOutAnimation)
+
+            // Send touch event to server to respawn fish
+            val touchEvent = JSONObject()
+            touchEvent.put("touchEvent", true)
+            webSocket.send(touchEvent.toString())
+            println("touched sent")
+            stopFishSwimming()
+            // Hide the fish ImageView when the animation finishes
+            fadeOutAnimation.setAnimationListener(object : Animation.AnimationListener {
+                override fun onAnimationStart(animation: Animation?) {}
+
+                override fun onAnimationEnd(animation: Animation?) {
+                    //fishImageView.visibility = View.INVISIBLE
+                }
+
+                override fun onAnimationRepeat(animation: Animation?) {}
+            })
+        }
     }
 
     // Runnable to periodically update fish location
@@ -153,10 +179,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun startFishSwimming() {
+        handler.removeCallbacks(updateFishLocationRunnable)
+        handler.post(updateFishLocationRunnable)
+    }
+
+    private fun stopFishSwimming() {
+        handler.removeCallbacks(updateFishLocationRunnable)
+    }
 
 
-
-    override fun onTouchEvent(event: MotionEvent): Boolean {
+/*    override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
                 // Check if the touch event coordinates are within the fish's bounds
@@ -183,5 +216,5 @@ class MainActivity : AppCompatActivity() {
             else -> return super.onTouchEvent(event)
         }
         return true
-    }
+    }*/
 }
