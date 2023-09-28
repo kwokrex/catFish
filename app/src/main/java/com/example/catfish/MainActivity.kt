@@ -11,6 +11,7 @@ import org.json.JSONObject
 import okhttp3.*
 import okhttp3.WebSocketListener
 import java.util.concurrent.TimeUnit
+import javax.net.ssl.HostnameVerifier
 
 @Serializable
 data class FishState(val x: Int, val y: Int, val visible: Boolean)
@@ -24,9 +25,13 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main) // Set the content view
-
+        val hostnameVerifier = HostnameVerifier { hostname, session ->
+            true
+        }
         val client = OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(3, TimeUnit.SECONDS)
+            .hostnameVerifier(hostnameVerifier)
             .build()
 
         val request = Request.Builder()
