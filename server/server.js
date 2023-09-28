@@ -26,6 +26,7 @@ wss.on('connection', (ws) => {
       // Update fishState with the provided screen dimensions
       fishState.screenWidth = data.screenWidth;
       fishState.screenHeight = data.screenHeight;
+      console.log(fishState.screenWidth);
 
       // Generate a random position within the provided dimensions
       fishState.x = Math.floor(Math.random() * data.screenWidth);
@@ -41,7 +42,7 @@ wss.on('connection', (ws) => {
   });
 
   // Send the initial fishState to the newly connected client
-  ws.send(JSON.stringify(fishState));
+  //ws.send(JSON.stringify(fishState));
 });
 });
 server.listen(8081, () => {

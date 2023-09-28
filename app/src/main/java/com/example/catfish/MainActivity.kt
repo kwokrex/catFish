@@ -1,6 +1,8 @@
 package com.example.catfish
 
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.MotionEvent
 import android.view.ViewGroup
@@ -12,6 +14,7 @@ import okhttp3.*
 import okhttp3.WebSocketListener
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.HostnameVerifier
+import kotlin.math.pow
 
 @Serializable
 data class FishState(val x: Int, val y: Int, val visible: Boolean)
@@ -21,6 +24,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var webSocket: WebSocket // Declare the WebSocket variable
     private var lastTouchX = 0f
     private var lastTouchY = 0f
+    // Handler to schedule periodic updates
+    private val handler = Handler(Looper.getMainLooper())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,7 +57,7 @@ class MainActivity : AppCompatActivity() {
                 screenDimensions.put("screenWidth", screenWidth)
                 screenDimensions.put("screenHeight", screenHeight)
 
-                webSocket.send(screenDimensions.toString())
+                //webSocket.send(screenDimensions.toString())
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
@@ -80,9 +85,76 @@ class MainActivity : AppCompatActivity() {
 
             }
         })
-
+        // Schedule periodic updates every 0.1 second
+        handler.postDelayed(updateFishLocationRunnable, 100)
         client.dispatcher.executorService.shutdown()
     }
+
+    // Runnable to periodically update fish location
+    private val updateFishLocationRunnable = object : Runnable {
+        private var moveX = 5f // Initial horizontal movement (constant rate)
+        private var moveY = 5f // Initial vertical movement (constant rate)
+        private var distanceMoved = 0f // Distance moved in the current direction
+
+        override fun run() {
+            // Get the current position of the fish
+            val fishImageView = findViewById<ImageView>(R.id.fishImageView)
+            val currentX = fishImageView.x
+            val currentY = fishImageView.y
+            val fishWidth = fishImageView.width.toFloat()
+            val fishHeight = fishImageView.height.toFloat()
+
+            // Get the screen dimensions
+            val rootView = findViewById<ViewGroup>(android.R.id.content)
+            val screenWidth = rootView.width.toFloat()
+            val screenHeight = rootView.height.toFloat()
+
+            // Calculate the new position by adding the movement
+            val newX = currentX + moveX
+            val newY = currentY + moveY
+
+            // Check if the fish has hit the left or right screen edge
+            if (newX < 0) {
+                // Reverse horizontal movement to bounce off the left edge
+                moveX = -moveX
+            } else if (newX + fishWidth > screenWidth) {
+                // Reverse horizontal movement to bounce off the right edge
+                moveX = -moveX
+            }
+
+            // Check if the fish has hit the top or bottom screen edge
+            if (newY < 0) {
+                // Reverse vertical movement to bounce off the top edge
+                moveY = -moveY
+            } else if (newY + fishHeight > screenHeight) {
+                // Reverse vertical movement to bounce off the bottom edge
+                moveY = -moveY
+            }
+
+            // Update the position
+            fishImageView.x = newX
+            fishImageView.y = newY
+
+            // Increment the distance moved
+            distanceMoved += Math.sqrt((newX - currentX).toDouble().pow(2) + (newY - currentY).toDouble().pow(2)).toFloat()
+
+            // Check if the fish has moved at least 300 pixels in the same direction
+            if (distanceMoved >= 300) {
+                // Randomly change the direction
+                moveX = (Math.random() * 10 - 5).toFloat() // Random horizontal movement (-2 to 2)
+                moveY = (Math.random() * 10 - 5).toFloat() // Random vertical movement (-2 to 2)
+
+                // Reset the distance moved
+                distanceMoved = 0f
+            }
+
+            // Schedule the next update after 0.1 second
+            handler.postDelayed(this, 10)
+        }
+    }
+
+
+
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.action) {
